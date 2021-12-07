@@ -41,11 +41,12 @@ def print_line(offset, line_bytes, line_chars, outstream, hex_style=False):
 def display(instream, outstream, hex_style=False):
     data = instream.read()
     i = 0
+    size = len(data)
     offset = 0
     line_bytes = []
     line_chars = []
     next_byte = None
-    while i < len(data):
+    while i < size:
         try:
             chars = data[i:i+2].decode(ENC)
             for ch in chars:
@@ -62,16 +63,15 @@ def display(instream, outstream, hex_style=False):
             line_chars.append('.')
             line_bytes.append(data[i])
             i += 1
-        if len(line_bytes) >= LINE_LEN:
+
+        if line_bytes and (len(line_bytes) >= LINE_LEN or i >= size):
             print_line(offset, line_bytes, line_chars, outstream, hex_style)
             line_bytes = []
             line_chars = []
-            if next_byte:
+            if next_byte is not None:
                 line_bytes.append(next_byte)
                 next_byte = None
             offset += LINE_LEN
-    if line_bytes:
-        print_line(line_bytes, line_chars, outstream)
 
 
 if __name__ == '__main__':
@@ -80,9 +80,14 @@ if __name__ == '__main__':
     parser.add_argument('filepath', nargs='?')
 
     args = parser.parse_args()
-    if args.filepath and args.filepath != '-':
-        with open(args.filepath, 'rb') as fp:
-            display(fp, sys.stdout, args.hex_style)
-    else:
-        display(sys.stdin.buffer, sys.stdout, args.hex_style)
+    try:
+        if args.filepath and args.filepath != '-':
+            with open(args.filepath, 'rb') as fp:
+                display(fp, sys.stdout, args.hex_style)
+        else:
+            display(sys.stdin.buffer, sys.stdout, args.hex_style)
+    except BrokenPipeError:
+        pass
+    except KeyboardInterrupt:
+        pass
     sys.exit(0)
